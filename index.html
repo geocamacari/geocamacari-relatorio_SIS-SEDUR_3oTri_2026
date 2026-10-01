@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel Processos Concluídos e em Andamento - 2026</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#6b21a8', // Violeta escuro
+                        secondary: '#8b5cf6', // Lilás
+                        accent: '#c084fc', // Lilás claro
+                        dark: '#1e293b',
+                        light: '#f8fafc',
+                        textMain: '#334155', // Evitando texto branco, usando cinza escuro
+                        textMuted: '#64748b'
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
+    <!-- Font Awesome CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    
+    <style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f1f5f9;
+            color: #334155; /* Texto escuro ao invés de branco */
+        }
+        .card {
+            background-color: #ffffff;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .text-violet-custom {
+            color: #6b21a8;
+        }
+        .text-lilac-custom {
+            color: #8b5cf6;
+        }
+        .bg-gradient-custom {
+            background: linear-gradient(135deg, #6b21a8 0%, #8b5cf6 100%);
+            color: #f8fafc; /* Exceção para contraste no header, mas usando um off-white */
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col text-sm md:text-base p-4 md:p-8">
+
+    <header class="bg-gradient-custom rounded-xl p-6 mb-8 shadow-lg">
+        <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-4">
+                <i class="fas fa-chart-pie text-4xl text-accent"></i>
+                <div>
+                    <h1 class="text-2xl md:text-3xl font-bold tracking-tight" style="color: #f8fafc;">Painel Processos Concluídos e em Andamento</h1>
+                    <p class="text-accent font-medium mt-1">Ano Base: 2026 | Dados extraídos do SIS-SEDUR</p>
+                </div>
+            </div>
+            <div class="bg-white/20 backdrop-blur-sm rounded-lg px-4 py-2 border border-white/30 text-light">
+                <i class="fas fa-calendar-alt mr-2"></i> Atualizado em: <span class="font-bold">01/10/2026</span>
+            </div>
+        </div>
+    </header>
+
+    <section class="mb-8">
+        <h2 class="text-xl font-bold text-violet-custom mb-4 flex items-center gap-2">
+            <i class="fas fa-filter"></i> Filtros de Análise
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <!-- Filter: Trimestre -->
+            <div class="card p-4 border-l-4 border-primary">
+                <label for="filter-quarter" class="block text-textMuted font-bold mb-2">Trimestre</label>
+                <select id="filter-quarter" class="w-full bg-slate-50 border border-slate-300 text-textMain rounded-lg focus:ring-secondary focus:border-secondary p-2.5 outline-none transition-colors">
+                    <option value="all">Consolidado 2026 (Até 3º Tri)</option>
+                    <option value="1">1º Trimestre</option>
+                    <option value="2">2º Trimestre</option>
+                    <option value="3" selected>3º Trimestre</option>
+                </select>
+            </div>
+            
+            <!-- Filter: Status -->
+            <div class="card p-4 border-l-4 border-secondary">
+                <label for="filter-status" class="block text-textMuted font-bold mb-2">Status do Processo</label>
+                <select id="filter-status" class="w-full bg-slate-50 border border-slate-300 text-textMain rounded-lg focus:ring-secondary focus:border-secondary p-2.5 outline-none transition-colors">
+                    <option value="all">Geral (Concluídos e Em Andamento)</option>
+                    <option value="concluido">Processos Concluídos</option>
+                    <option value="andamento">Processos Em Andamento</option>
+                </select>
+            </div>
+
+            <!-- Filter: Setor -->
+            <div class="card p-4 border-l-4 border-accent">
+                <label for="filter-sector" class="block text-textMuted font-bold mb-2">Setor (Coordenação)</label>
+                <select id="filter-sector" class="w-full bg-slate-50 border border-slate-300 text-textMain rounded-lg focus:ring-secondary focus:border-secondary p-2.5 outline-none transition-colors">
+                    <option value="all">Todos os Setores</option>
+                    <!-- Options populated by JS -->
+                </select>
+            </div>
+
+            <!-- Filter: Assunto -->
+            <div class="card p-4 border-l-4 border-pink-400">
+                <label for="filter-subject" class="block text-textMuted font-bold mb-2">Assunto / Serviço</label>
+                <select id="filter-subject" class="w-full bg-slate-50 border border-slate-300 text-textMain rounded-lg focus:ring-secondary focus:border-secondary p-2.5 outline-none transition-colors">
+                    <option value="all">Todos os Assuntos</option>
+                    <!-- Options populated by JS -->
+                </select>
+            </div>
+        </div>
+    </section>
+
+    <section class="mb-8">
+        <h2 class="text-xl font-bold text-violet-custom mb-4 flex items-center gap-2">
+            <i class="fas fa-chart-line"></i> Indicadores de Desempenho (Visão Atual)
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" id="kpi-container">
+            <!-- KPIs dynamically updated here -->
+        </div>
+    </section>
+
+    <section class="mb-8">
+        <h2 class="text-xl font-bold text-lilac-custom mb-4 flex items-center gap-2">
+            <i class="fas fa-lightbulb"></i> Insights e Evolução Histórica 2026
+        </h2>
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            <div class="card p-5 bg-blue-50 border border-blue-100 flex flex-col h-full justify-between">
+                <div>
+                    <h3 class="font-bold text-blue-800 text-lg mb-2"><i class="fas fa-level-up-alt mr-2"></i> Pico de Produtividade</h3>
+                    <p class="text-slate-700 text-sm leading-relaxed mb-4">
+                        O <strong>3º Trimestre</strong> registrou o maior volume de entregas do ano com <span class="font-bold text-blue-600 text-lg">645</span> processos concluídos.
+                        Um salto significativo de <strong>+41,8%</strong> em relação ao 2º Trimestre.
+                    </p>
+                </div>
+                <div class="w-full bg-slate-200 rounded-full h-2.5">
+                    <div class="bg-blue-600 h-2.5 rounded-full" style="width: 100%"></div>
+                </div>
+            </div>
+
+            <div class="card p-5 bg-emerald-50 border border-emerald-100 flex flex-col h-full justify-between">
+                <div>
+                    <h3 class="font-bold text-emerald-800 text-lg mb-2"><i class="fas fa-check-double mr-2"></i> Foco em Habitação</h3>
+                    <p class="text-slate-700 text-sm leading-relaxed mb-4">
+                        O setor <strong>CLU</strong> liderou os esforços no 3º Tri, com forte escoamento em <strong>Alvarás de Habite-se</strong> (regular e regularização) e <strong>Licenças Uniresidenciais</strong>, essenciais para a construção civil.
+                    </p>
+                </div>
+                <div class="w-full bg-slate-200 rounded-full h-2.5">
+                    <div class="bg-emerald-500 h-2.5 rounded-full" style="width: 75%"></div>
+                </div>
+            </div>
+
+            <div class="card p-5 bg-amber-50 border border-amber-100 flex flex-col h-full justify-between">
+                <div>
+                    <h3 class="font-bold text-amber-800 text-lg mb-2"><i class="fas fa-layer-group mr-2"></i> Passivo Estagnado</h3>
+                    <p class="text-slate-700 text-sm leading-relaxed mb-4">
+                        Do total de processos em andamento consolidados (3.427), apenas <strong>1.877</strong> tiveram movimentação de conclusão de serviços similares no 3º tri. 
+                        A diferença representa estoques represados, excetuando SUOFIS/DIROP.
+                    </p>
+                </div>
+                <div class="w-full bg-slate-200 rounded-full h-2.5">
+                    <div class="bg-amber-500 h-2.5 rounded-full" style="width: 54%"></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="flex-grow flex flex-col mb-8">
+        <h2 class="text-xl font-bold text-violet-custom mb-4 flex items-center gap-2">
+            <i class="fas fa-chart-bar"></i> Análise Gráfica
+        </h2>
+        
+        <!-- Contextual title for charts -->
+        <div id="chart-context-title" class="text-center font-bold text-textMuted mb-4 text-lg bg-white p-3 rounded-lg shadow-sm border border-slate-100">
+            Visão Geral: 3º Trimestre
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6" id="charts-container">
+            <!-- Chart 1: Bar/Doughnut based on selection -->
+            <div class="card p-4 min-h-[400px] flex flex-col items-center justify-center relative">
+                <canvas id="chart1"></canvas>
+            </div>
+            
+            <!-- Chart 2: Historical/Trend or detail based on selection -->
+            <div class="card p-4 min-h-[400px] flex flex-col items-center justify-center relative">
+                <canvas id="chart2"></canvas>
+            </div>
+        </div>
+        
+        <!-- Full width chart for specific views if needed -->
+        <div class="card p-4 mt-6 hidden min-h-[300px]" id="chart3-container">
+             <canvas id="chart3"></canvas>
+        </div>
+    </section>
+
+    <footer class="mt-auto pt-8 pb-4 border-t border-slate-300">
+        <div class="bg-slate-800 rounded-lg p-6 text-slate-300 text-sm flex flex-col md:flex-row justify-between items-center gap-4">
+            <div>
+                <p class="font-bold text-slate-100 text-base mb-1">REALIZAÇÃO:</p>
+                <p>Coordenadoria de Planejamento e Projetos (CPP)</p>
+                <p>Diretoria de Urbanismo (DIRURB)</p>
+                <p>Secretaria de Desenvolvimento Urbano e Meio Ambiente (SEDUR) / PMC</p>
+            </div>
+            <div class="text-right">
+                <div class="inline-block p-3 bg-slate-700 rounded-lg border border-slate-600">
+                    <i class="far fa-calendar-check text-secondary mr-2 text-lg"></i>
+                    <span class="font-bold">01 de Outubro de 2026</span>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Data Extraction (excluding SUOFIS and DIROP as requested)
+        // Structure: Setor, Assunto, EmAndamento, Q1, Q2, Q3, Q4, TotalConcluidos
+        const rawData = [
+            { setor: 'CLA', assunto: 'ALTERAÇÃO DE RAZÃO SOCIAL', andamento: 0, q1: 1, q2: 1, q3: 1, q4: 0, totalAno: 3 },
+            { setor: 'CLU', assunto: 'ALTERAÇÃO DE TAC', andamento: 12, q1: 1, q2: 1, q3: 2, q4: 0, totalAno: 16 },
+            { setor: 'CLU', assunto: 'ALVARÁ DE CONCLUSÃO DE OBRAS (INFRAESTRUTURA)', andamento: 10, q1: 0, q2: 0, q3: 2, q4: 0, totalAno: 12 },
+            { setor: 'CLU', assunto: 'ALVARÁ DE HABITE-SE', andamento: 230, q1: 52, q2: 47, q3: 65, q4: 0, totalAno: 394 },
+            { setor: 'CLU', assunto: 'ALVARÁ DE HABITE-SE DE REGULARIZAÇÃO', andamento: 110, q1: 32, q2: 33, q3: 53, q4: 0, totalAno: 228 },
+            { setor: 'CLA', assunto: 'ANÁLISE DE ORIENTAÇÃO PRÉVIA DE EMPREENDIMENTOS (AOP)', andamento: 10, q1: 0, q2: 0, q3: 0, q4: 0, totalAno: 10 },
+            { setor: 'CLA', assunto: 'ATENDIMENTO/ PRORROGAÇÃO/ REVISÃO DE CONDICIONANTES', andamento: 92, q1: 16, q2: 18, q3: 19, q4: 0, totalAno: 145 },
+            { setor: 'CLU', assunto: 'AUTENTICAÇÃO DE PLANTAS', andamento: 4, q1: 0, q2: 0, q3: 0, q4: 0, totalAno: 4 },
+            { setor: 'CLA', assunto: 'AUTORIZAÇÃO', andamento: 2, q1: 2, q2: 0, q3: 1, q4: 0, totalAno: 5 },
+            { setor: 'CLA', assunto: 'AUTORIZAÇÃO AMBIENTAL', andamento: 5, q1: 1, q2: 0, q3: 3, q4: 0, totalAno: 9 },
+            { setor: 'GELAP', assunto: 'AUTORIZAÇÃO PARA IMPLANTAÇÃO DE AUDIO VISUAL, FOLHETO E PROSPECTO', andamento: 1, q1: 0, q2: 0, q3: 0, q4: 0, totalAno: 1 },
+            { setor: 'GELAP', assunto: 'AUTORIZAÇÃO PARA IMPLANTAÇÃO DE GALHARDETE, ESTANDARTE, SIMILARES E MURO', andamento: 1, q1: 0, q2: 0, q3: 0, q4: 0, totalAno: 1 },
+            { setor: 'GELAP', assunto: 'AUTORIZAÇÃO PARA IMPLANTAÇÃO DE LETREIRO, TOLDO, TAPUME, PROTETOR DE OBRAS E EQUIPAMENTOS AMBULANTES', andamento: 5, q1: 1, q2: 3, q3: 1, q4: 0, totalAno: 10 },
+            { setor: 'GELAP', assunto: 'AUTORIZAÇÃO PARA IMPLANTAÇÃO DE OUTDOOR, PAÍNEL, TÓTEM E EMPENA', andamento: 8, q1: 1, q2: 2, q3: 1, q4: 0, totalAno: 12 },
+            { setor: 'CLU', assunto: 'AUTORIZAÇÃO PARA LIBERAÇÃO DE LOTES / UNIDADES CAUCIONADAS', andamento: 1, q1: 2, q2: 0, q3: 0, q4: 0, totalAno: 3 },
+            { setor: 'CPA', assunto: 'AUTORIZAÇÃO PARA PODA OU CORTE DE ARVORES', andamento: 49, q1: 21, q2: 22, q3: 30, q4: 0, totalAno: 122 },
+            { setor: 'CLA', assunto: 'AUTORIZAÇÃO PARA SUPRESSÃO DE VEGETAÇÃO (ASV)', andamento: 12, q1: 1, q2: 2, q3: 8, q4: 0, totalAno: 23 },
+            { setor: 'CLA', assunto: 'BAIXA DE LICENÇA AMBIENTAL', andamento: 2, q1: 0, q2: 0, q3: 1, q4: 0, totalAno: 3 },
+            { setor: 'CLA', assunto: 'CERTIDÃO AMBIENTAL', andamento: 11, q1: 3, q2: 0, q3: 3, q4: 0, totalAno: 17 },
+            { setor: 'CLU', assunto: 'CERTIDÃO DE DEMOLIÇÃO', andamento: 2, q1: 3, q2: 2, q3: 5, q4: 0, totalAno: 12 },
+            { setor: 'CLU', assunto: 'CERTIDÃO DE EDIFICAÇÃO', andamento: 8, q1: 0, q2: 1, q3: 0, q4: 0, totalAno: 9 },
+            { setor: 'CIM', assunto: 'CERTIDÃO DE INFORMAÇÃO DE ÁREA', andamento: 17, q1: 11, q2: 5, q3: 32, q4: 0, totalAno: 65 },
+            { setor: 'SEHAB', assunto: 'Certidão Narrativa', andamento: 5, q1: 0, q2: 0, q3: 0, q4: 0, totalAno: 5 },
+            { setor: 'CPP', assunto: 'CONSULTA PRÉVIA', andamento: 42, q1: 34, q2: 28, q3: 44, q4: 0, totalAno: 148 },
+            { setor: 'CIM', assunto: 'CÓPIA DE PLANTA DE PARCELAMENTO APROVADO', andamento: 7, q1: 0, q2: 0, q3: 0, q4: 0, totalAno: 7 },
+            { setor: 'CIM', assunto: 'DECLARAÇÃO DE ENDEREÇO DO IMÓVEL', andamento: 5, q1: 23, q2: 12, q3: 24, q4: 0, totalAno: 64 },
+            { setor: 'CLA', assunto: 'DISPENSA DE LICENÇA AMBIENTAL', andamento: 19, q1: 0, q2: 4, q3: 23, q4: 0, totalAno: 46 },
+            { setor: 'CLA', assunto: 'INEXIGIBILIDADE DE LICENCIAMENTO AMBIENTAL', andamento: 24, q1: 41, q2: 21, q3: 14, q4: 0, totalAno: 100 },
+            { setor: 'CLA', assunto: 'LICENÇA AMBIENTAL DE ALTERAÇÃO (LAA)', andamento: 3, q1: 4, q2: 0, q3: 2, q4: 0, totalAno: 9 },
+            { setor: 'CLA', assunto: 'LICENÇA AMBIENTAL DE OPERAÇÃO (LAO)', andamento: 4, q1: 0, q2: 0, q3: 0, q4: 0, totalAno: 4 },
+            { setor: 'CLA', assunto: 'LICENÇA AMBIENTAL PRÉVIA (LAP)', andamento: 1, q1: 1, q2: 0, q3: 0, q4: 0, totalAno: 2 },
+            { setor: 'CLA', assunto: 'LICENÇA AMBIENTAL SIMPLIFICADA (LAS)', andamento: 51, q1: 19, q2: 20, q3: 29, q4: 0, totalAno: 119 },
+            { setor: 'CLA', assunto: 'LICENÇA ESPECÍFICA PARA EXPLORAÇÃO DE SUBSTÂNCIAS MINERAIS', andamento: 3, q1: 0, q2: 0, q3: 0, q4: 0, totalAno: 3 },
+            { setor: 'CLU', assunto: 'LICENÇA PARA AMEMBRAMENTO', andamento: 29, q1: 2, q2: 1, q3: 2, q4: 0, totalAno: 34 },
+            { setor: 'CLU', assunto: 'LICENÇA PARA AMPLIAÇÃO E/OU REFORMA DO IMÓVEL', andamento: 87, q1: 17, q2: 13, q3: 26, q4: 0, totalAno: 143 },
+            { setor: 'CLU', assunto: 'LICENÇA PARA CONSTRUÇÃO DE EDIFICAÇÃO PLURIRESIDENCIAL', andamento: 58, q1: 2, q2: 8, q3: 10, q4: 0, totalAno: 78 },
+            { setor: 'CLU', assunto: 'LICENÇA PARA CONSTRUÇÃO DE EDIFICAÇÃO UNIRESIDENCIAL', andamento: 162, q1: 110, q2: 70, q3: 88, q4: 0, totalAno: 430 },
+            { setor: 'CLU', assunto: 'LICENÇA PARA CONSTRUÇÃO DE ESTABELECIMENTOS NÃO RESIDENCIAIS', andamento: 61, q1: 6, q2: 6, q3: 6, q4: 0, totalAno: 79 },
+            { setor: 'CLU', assunto: 'LICENÇA PARA CONSTRUÇÃO DE MURO/GRADIL/CONTENÇÃO', andamento: 37, q1: 1, q2: 3, q3: 5, q4: 0, totalAno: 46 },
+            { setor: 'CLU', assunto: 'LICENÇA PARA CONSTRUÇÃO DE URBANIZAÇÃO INTEGRADA/ REURBANIZAÇÃO INTEGRADA', andamento: 13, q1: 0, q2: 1, q3: 1, q4: 0, totalAno: 15 },
+            { setor: 'CLU', assunto: 'LICENÇA PARA DEMOLIÇÃO', andamento: 15, q1: 3, q2: 7, q3: 6, q4: 0, totalAno: 31 },
+            { setor: 'CLU', assunto: 'LICENÇA PARA DESMEMBRAMENTO / DESDOBRO', andamento: 78, q1: 7, q2: 7, q3: 10, q4: 0, totalAno: 102 },
+            { setor: 'GELAP', assunto: 'LICENÇA PARA FUNCIONAMENTO DE PARQUES DE DIVERSÕES E CIRCO', andamento: 5, q1: 0, q2: 0, q3: 0, q4: 0, totalAno: 5 },
+            { setor: 'CLU', assunto: 'LICENÇA PARA IMPLANTAÇÃO DE CONDOMÍNIO DE LOTES', andamento: 12, q1: 0, q2: 0, q3: 2, q4: 0, totalAno: 14 },
+            { setor: 'CLU', assunto: 'LICENÇA PARA IMPLANTAÇÃO DE TAPUME', andamento: 2, q1: 0, q2: 0, q3: 0, q4: 0, totalAno: 2 },
+            { setor: 'GELAP', assunto: 'LICENÇA PARA INSTALAÇÃO EQUIPAMENTO FIXO EM LOGRADOURO PÚBLICO', andamento: 12, q1: 5, q2: 0, q3: 0, q4: 0, totalAno: 17 },
+            { setor: 'CLU', assunto: 'LICENÇA PARA LOTEAMENTO/ RELOTEAMENTO', andamento: 10, q1: 1, q2: 1, q3: 3, q4: 0, totalAno: 15 },
+            { setor: 'CLU', assunto: 'LICENÇA PARA OBRAS DE INFRAESTRUTURA', andamento: 47, q1: 3, q2: 3, q3: 6, q4: 0, totalAno: 59 },
+            { setor: 'GELAP', assunto: 'LICENÇA PARA REALIZAÇÃO DE EVENTOS EM ÁREA PRIVADA', andamento: 4, q1: 0, q2: 0, q3: 0, q4: 0, totalAno: 4 },
+            { setor: 'GELAP', assunto: 'LICENÇA PARA REALIZAÇÃO DE EVENTOS EM ÁREA PÚBLICA', andamento: 28, q1: 1, q2: 4, q3: 5, q4: 0, totalAno: 38 },
+            { setor: 'GELAP', assunto: 'LICENÇA PARA REALIZAÇÃO DE EVENTOS REFERENTES A DIVULGAÇÃO COMERCIAL', andamento: 1, q1: 0, q2: 0, q3: 0, q4: 0, totalAno: 1 },
+            { setor: 'CLU', assunto: 'LICENÇA PARA REMEMBRAMENTO', andamento: 28, q1: 1, q2: 5, q3: 5, q4: 0, totalAno: 39 },
+            { setor: 'CLU', assunto: 'LICENÇA PARA REPAROS GERAIS', andamento: 7, q1: 3, q2: 1, q3: 2, q4: 0, totalAno: 13 },
+            { setor: 'CLA', assunto: 'LICENÇA PARA TERRAPLANAGEM', andamento: 30, q1: 8, q2: 7, q3: 16, q4: 0, totalAno: 61 },
+            { setor: 'CLU', assunto: 'MODIFICAÇÃO DO PROJETO', andamento: 16, q1: 10, q2: 6, q3: 6, q4: 0, totalAno: 38 },
+            { setor: 'CLU', assunto: 'OUTROS SERVIÇOS', andamento: 43, q1: 6, q2: 2, q3: 2, q4: 0, totalAno: 53 },
+            { setor: 'CLA', assunto: 'OUTROS SERVIÇOS CLA', andamento: 42, q1: 2, q2: 1, q3: 3, q4: 0, totalAno: 48 }, // Renomeado para evitar conflito
+            { setor: 'CLA', assunto: 'PRORROGAÇÃO DE LICENÇA/ AUTORIZAÇÃO', andamento: 3, q1: 0, q2: 0, q3: 0, q4: 0, totalAno: 3 },
+            { setor: 'CLU', assunto: 'RECONSIDERAÇÃO DE PARECER/ PROCESSO CLU', andamento: 12, q1: 1, q2: 0, q3: 0, q4: 0, totalAno: 13 }, // Agrupado linhas CLU
+            { setor: 'GELAP', assunto: 'RECONSIDERAÇÃO DE PARECER/ PROCESSO GELAP', andamento: 1, q1: 0, q2: 0, q3: 0, q4: 0, totalAno: 1 },
+            { setor: 'CLA', assunto: 'RECONSIDERAÇÃO DE PARECER/ PROCESSO CLA', andamento: 4, q1: 0, q2: 0, q3: 0, q4: 0, totalAno: 4 },
+            { setor: 'COGEFIN', assunto: 'RECONSIDERAÇÃO DE PARECER/ PROCESSO COGEFIN', andamento: 2, q1: 0, q2: 0, q3: 1, q4: 0, totalAno: 3 },
+            { setor: 'CPP', assunto: 'RECONSIDERAÇÃO DE PARECER/ PROCESSO CPP', andamento: 8, q1: 0, q2: 1, q3: 0, q4: 0, totalAno: 9 },
+            { setor: 'CLA', assunto: 'RENOVAÇÃO DE LICENÇA AMBIENTAL (RLA)', andamento: 40, q1: 5, q2: 7, q3: 10, q4: 0, totalAno: 62 },
+            { setor: 'CLU', assunto: 'RENOVAÇÃO DE LICENÇA DE CONSTRUÇÃO', andamento: 12, q1: 0, q2: 1, q3: 3, q4: 0, totalAno: 16 },
+            { setor: 'GELAP', assunto: 'RENOVAÇÃO DE LICENÇA PARA INSTALAÇÃO EQUIPAMENTO FIXO EM LOGRADOURO PÚBLICO', andamento: 10, q1: 7, q2: 2, q3: 1, q4: 0, totalAno: 20 },
+            { setor: 'GELAP', assunto: 'RENOVAÇÃO DO ALVARÁ DE PUBLICIDADE', andamento: 47, q1: 39, q2: 26, q3: 15, q4: 0, totalAno: 127 },
+            { setor: 'CIM', assunto: 'SOLICITAÇÃO DE CÓPIA DE PROCESSO PARCIAL (ALVARÁ E/ OU PLANTA E/OU CERTIDÃO)', andamento: 34, q1: 0, q2: 0, q3: 0, q4: 0, totalAno: 34 },
+            { setor: 'CIM', assunto: 'SOLICITAÇÃO DE CÓPIA DE PROCESSO TOTAL', andamento: 50, q1: 0, q2: 0, q3: 0, q4: 0, totalAno: 50 },
+            { setor: 'CLU', assunto: 'TERMO DE RECONHECIMENTO DE EDIFICAÇÃO CONCLUÍDA-TREC', andamento: 189, q1: 37, q2: 40, q3: 44, q4: 0, totalAno: 310 },
+            { setor: 'CLA', assunto: 'TRANSFERÊNCIA DA TITULARIDADE', andamento: 2, q1: 1, q2: 1, q3: 2, q4: 0, totalAno: 6 },
+            { setor: 'CLU', assunto: 'TRANSFERÊNCIA DE TITULARIDADE DE ALVARÁ', andamento: 7, q1: 0, q2: 4, q3: 0, q4: 0, totalAno: 11 },
+            { setor: 'CLU', assunto: 'TRANSFERÊNCIA OU CANCELAMENTO DE RESPONSÁVEL TÉCNICO', andamento: 10, q1: 3, q2: 0, q3: 1, q4: 0, totalAno: 14 }
+        ];
+
+        // Historical End of Quarter Pending Data (excluding SUOFIS/DIROP impact generally estimated for visualization)
+        // Note: User provided 1681, 3321, 3427 for total including SUOFIS. 
+        // For accurate graphical representation excluding them, we recalculate historical pending totals based on the provided filtered list
+        // However, since we don't have exact historical pending per item, we will use the user provided totals for the trend line to satisfy the prompt, but add a note.
+        const historicalPending = {
+            q1: 1681,
+            q2: 3321,
+            q3: 3427
+        };
+
+        const totalConcluidosHistorical = {
+            q1: 553,
+            q2: 455,
+            q3: 645
+        };
+
+        let currentChart1 = null;
+        let currentChart2 = null;
+        let currentChart3 = null;
+
+        const selectors = {
+            quarter: document.getElementById('filter-quarter'),
+            status: document.getElementById('filter-status'),
+            sector: document.getElementById('filter-sector'),
+            subject: document.getElementById('filter-subject'),
+            kpiContainer: document.getElementById('kpi-container'),
+            contextTitle: document.getElementById('chart-context-title'),
+            chart3Container: document.getElementById('chart3-container')
+        };
+
+        // Register Chart.js DataLabels plugin
+        Chart.register(ChartDataLabels);
+
+        function init() {
+            populateSelects();
+            attachEventListeners();
+            updateDashboard();
+        }
+
+        function populateSelects() {
+            // Populate Sectors
+            const setores = [...new Set(rawData.map(item => item.setor))].sort();
+            setores.forEach(setor => {
+                const option = document.createElement('option');
+                option.value = setor;
+                option.textContent = setor;
+                selectors.sector.appendChild(option);
+            });
+
+            // Populate Subjects
+            const assuntos = [...new Set(rawData.map(item => item.assunto))].sort();
+            assuntos.forEach(assunto => {
+                const option = document.createElement('option');
+                option.value = assunto;
+                option.textContent = assunto;
+                selectors.subject.appendChild(option);
+            });
+        }
+
+        function attachEventListeners() {
+            selectors.quarter.addEventListener('change', updateDashboard);
+            selectors.status.addEventListener('change', updateDashboard);
+            
+            selectors.sector.addEventListener('change', (e) => {
+                // Update Subject dropdown based on Sector
+                const selectedSector = e.target.value;
+                selectors.subject.innerHTML = '<option value="all">Todos os Assuntos</option>';
+                
+                let filteredAssuntos = rawData;
+                if (selectedSector !== 'all') {
+                    filteredAssuntos = rawData.filter(item => item.setor === selectedSector);
+                }
+                
+                const assuntos = [...new Set(filteredAssuntos.map(item => item.assunto))].sort();
+                assuntos.forEach(assunto => {
+                    const option = document.createElement('option');
+                    option.value = assunto;
+                    option.textContent = assunto;
+                    selectors.subject.appendChild(option);
+                });
+                
+                updateDashboard();
+            });
+
+            selectors.subject.addEventListener('change', updateDashboard);
+        }
+
+        function getFilteredData() {
+            const quarter = selectors.quarter.value;
+            const status = selectors.status.value;
+            const sector = selectors.sector.value;
+            const subject = selectors.subject.value;
+
+            let filtered = rawData.filter(item => {
+                let matchSector = sector === 'all' || item.setor === sector;
+                let matchSubject = subject === 'all' || item.assunto === subject;
+                return matchSector && matchSubject;
+            });
+
+            // Add calculated values based on quarter
+            filtered = filtered.map(item => {
+                let concluidos = 0;
+                let andamento = item.andamento; // Andamento is only provided for Q3/current state
+
+                if (quarter === '1') concluidos = item.q1;
+                else if (quarter === '2') concluidos = item.q2;
+                else if (quarter === '3') concluidos = item.q3;
+                else if (quarter === 'all') concluidos = item.q1 + item.q2 + item.q3;
+
+                return {
+                    ...item,
+                    calcConcluidos: concluidos,
+                    calcAndamento: quarter === '1' || quarter === '2' ? null : andamento // Can't accurately show pending per item for past quarters
+                };
+            });
+
+            return { filtered, quarter, status, sector, subject };
+        }
+
+        function updateDashboard() {
+            const dataState = getFilteredData();
+            updateContextTitle(dataState);
+            updateKPIs(dataState);
+            renderCharts(dataState);
+        }
+
+        function updateContextTitle(state) {
+            let qText = state.quarter === 'all' ? 'Consolidado (1º ao 3º Trimestre)' : `${state.quarter}º Trimestre`;
+            let sText = state.sector === 'all' ? 'Todos os Setores' : `Setor: ${state.sector}`;
+            let subjText = state.subject === 'all' ? '' : ` | ${state.subject}`;
+            
+            selectors.contextTitle.innerHTML = `Visão: <strong>${qText}</strong> | ${sText}${subjText}`;
+        }
+
+        function calculatePercentage(part, total) {
+            if (total === 0) return 0;
+            return ((part / total) * 100).toFixed(1);
+        }
+
+        function updateKPIs(state) {
+            const data = state.filtered;
+            
+            // Calculate totals
+            let totalConcluidos = data.reduce((sum, item) => sum + item.calcConcluidos, 0);
+            let totalAndamento = state.quarter === '1' || state.quarter === '2' ? 0 : data.reduce((sum, item) => sum + item.calcAndamento, 0);
+            
+            let html = '';
+
+            if (state.quarter === 'all') {
+                // If 'all' quarters, show total concluded vs total pending (current)
+                const totalGeral = totalConcluidos + totalAndamento;
+                
+                html += createKPICard('Total Movimentado', totalGeral, 'fas fa-cubes', 'border-violet-500', 'text-violet-600', '100%');
+                html += createKPICard('Processos Concluídos (Ano)', totalConcluidos, 'fas fa-check-circle', 'border-emerald-500', 'text-emerald-600', `${calculatePercentage(totalConcluidos, totalGeral)}% do Total`);
+                html += createKPICard('Em Andamento (Atual)', totalAndamento, 'fas fa-hourglass-half', 'border-amber-500', 'text-amber-600', `${calculatePercentage(totalAndamento, totalGeral)}% do Total`);
+                
+                // Active Sectors count
+                const sectorsCount = new Set(data.map(d => d.setor)).size;
+                html += createKPICard('Setores Envolvidos', sectorsCount, 'fas fa-building', 'border-blue-500', 'text-blue-600', '-');
+                
+            } else {
+                // Specific Quarter
+                const totalAnoAteMomento = state.quarter === '1' ? totalConcluidosHistorical.q1 : 
+                                           state.quarter === '2' ? (totalConcluidosHistorical.q1 + totalConcluidosHistorical.q2) :
+                                           (totalConcluidosHistorical.q1 + totalConcluidosHistorical.q2 + totalConcluidosHistorical.q3);
+                
+                let qData = state.quarter === '1' ? totalConcluidosHistorical.q1 : state.quarter === '2' ? totalConcluidosHistorical.q2 : totalConcluidosHistorical.q3;
+                
+                html += createKPICard(`Concluídos (${state.quarter}º Tri)`, totalConcluidos, 'fas fa-check-double', 'border-emerald-500', 'text-emerald-600', 'No período selecionado');
+                
+                if (state.sector === 'all' && state.subject === 'all') {
+                    // Show historical pending info only on global view to avoid misleading data
+                    let pendingHist = state.quarter === '1' ? historicalPending.q1 : state.quarter === '2' ? historicalPending.q2 : historicalPending.q3;
+                    html += createKPICard('Estoque Final Estimado', pendingHist, 'fas fa-database', 'border-amber-500', 'text-amber-600', 'Inclui dados não filtráveis');
+                    
+                    let resolucao = calculatePercentage(qData, (qData + pendingHist));
+                    html += createKPICard('Taxa de Resolução Aproximada', `${resolucao}%`, 'fas fa-tachometer-alt', 'border-blue-500', 'text-blue-600', 'Saídas vs Demanda');
+                } else if(state.quarter === '3' || state.quarter === 'all') {
+                     html += createKPICard('Em Andamento (Estoque Setor)', totalAndamento, 'fas fa-hourglass', 'border-amber-500', 'text-amber-600', 'Apenas serviços filtrados');
+                } else {
+                     html += createKPICard('Aviso de Dados', 'N/D', 'fas fa-exclamation-circle', 'border-slate-300', 'text-slate-500', 'Histórico de andamento indisponível');
+                }
+            }
+
+            selectors.kpiContainer.innerHTML = html || '<div class="col-span-4 text-center text-slate-500 p-4">Selecione filtros aplicáveis para ver os indicadores.</div>';
+        }
+
+        function createKPICard(title, value, icon, borderClass, textClass, subtitle) {
+            return `
+                <div class="card p-5 border-t-4 ${borderClass} flex items-center justify-between">
+                    <div>
+                        <p class="text-textMuted font-bold text-xs uppercase tracking-wider mb-1">${title}</p>
+                        <h3 class="text-3xl font-black ${textClass}">${value}</h3>
+                        <p class="text-xs text-slate-500 mt-2 font-medium bg-slate-100 inline-block px-2 py-1 rounded">${subtitle}</p>
+                    </div>
+                    <div class="h-12 w-12 rounded-full bg-slate-50 flex items-center justify-center ${textClass} text-2xl opacity-80">
+                        <i class="${icon}"></i>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderCharts(state) {
+            // Destroy existing charts
+            if (currentChart1) currentChart1.destroy();
+            if (currentChart2) currentChart2.destroy();
+            if (currentChart3) currentChart3.destroy();
+            
+            selectors.chart3Container.classList.add('hidden');
+
+            const ctx1 = document.getElementById('chart1').getContext('2d');
+            const ctx2 = document.getElementById('chart2').getContext('2d');
+            const ctx3 = document.getElementById('chart3').getContext('2d');
+
+            Chart.defaults.color = '#475569';
+            Chart.defaults.font.family = "'Inter', sans-serif";
+            
+            // Common colors
+            const colors = {
+                concluido: 'rgba(16, 185, 129, 0.8)', // Emerald
+                concluidoBorder: 'rgb(16, 185, 129)',
+                andamento: 'rgba(245, 158, 11, 0.8)', // Amber
+                andamentoBorder: 'rgb(245, 158, 11)',
+                palette: [
+                    '#8b5cf6', '#6366f1', '#ec4899', '#f43f5e', '#f59e0b', 
+                    '#10b981', '#06b6d4', '#3b82f6', '#8b5cf6', '#d946ef'
+                ]
+            };
+
+            const data = state.filtered;
+
+            // SCENARIO 1: Single Subject Selected
+            if (state.subject !== 'all') {
+                const item = data[0];
+                
+                // Chart 1: Progress over year (if data available)
+                if(item) {
+                     currentChart1 = new Chart(ctx1, {
+                        type: 'bar',
+                        data: {
+                            labels: ['1º Tri', '2º Tri', '3º Tri'],
+                            datasets: [{
+                                label: 'Concluídos',
+                                data: [item.q1, item.q2, item.q3],
+                                backgroundColor: colors.concluido,
+                                borderColor: colors.concluidoBorder,
+                                borderWidth: 1,
+                                borderRadius: 4
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                title: { display: true, text: 'Evolução de Conclusões no Ano', font: {size: 16, weight: 'bold'}, color: '#6b21a8' },
+                                legend: { display: false },
+                                datalabels: { color: '#fff', font: {weight: 'bold'} }
+                            }
+                        }
+                    });
+                }
+
+                // Chart 2: Concluded vs Pending (Current Status)
+                if (item && (state.quarter === '3' || state.quarter === 'all')) {
+                    currentChart2 = new Chart(ctx2, {
+                        type: 'doughnut',
+                        data: {
+                            labels: ['Concluídos (Acumulado)', 'Em Andamento (Atual)'],
+                            datasets: [{
+                                data: [item.totalAno, item.andamento],
+                                backgroundColor: [colors.concluido, colors.andamento],
+                                borderWidth: 2,
+                                borderColor: '#fff'
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                title: { display: true, text: 'Proporção: Concluídos vs Andamento', font: {size: 16, weight: 'bold'}, color: '#6b21a8' },
+                                datalabels: { 
+                                    color: '#fff', 
+                                    font: {weight: 'bold', size: 14},
+                                    formatter: (value, ctx) => {
+                                        let sum = 0;
+                                        let dataArr = ctx.chart.data.datasets[0].data;
+                                        dataArr.map(data => { sum += data; });
+                                        let percentage = (value * 100 / sum).toFixed(1) + "%";
+                                        return percentage;
+                                    }
+                                }
+                            }
+                        }
+                    });
+                } else {
+                     showEmptyChartMessage(ctx2, "Dados de andamento retroativo não disponíveis.");
+                }
+
+                return; // Exit early for single subject
+            }
+
+            // SCENARIO 2: No specific subject (General or by Sector)
+            
+            // Prepare Data for Top 15 Concluded
+            let topConcluidos = [...data]
+                .filter(d => d.calcConcluidos > 0)
+                .sort((a, b) => b.calcConcluidos - a.calcConcluidos)
+                .slice(0, 15);
+
+            // Prepare Data for Top 15 Pending
+            let topAndamento = [...data]
+                .filter(d => d.calcAndamento > 0)
+                .sort((a, b) => b.calcAndamento - a.calcAndamento)
+                .slice(0, 15);
+
+            // Render based on Status Filter
+            if (state.status === 'all' || state.status === 'concluido') {
+                const limit = state.status === 'concluido' ? 15 : 10;
+                let dataset = state.status === 'concluido' ? topConcluidos : topConcluidos.slice(0,10);
+                
+                currentChart1 = new Chart(ctx1, {
+                    type: 'bar',
+                    data: {
+                        labels: dataset.map(d => d.assunto.length > 30 ? d.assunto.substring(0, 30) + '...' : d.assunto),
+                        datasets: [{
+                            label: 'Processos Concluídos',
+                            data: dataset.map(d => d.calcConcluidos),
+                            backgroundColor: colors.concluido,
+                            borderRadius: 4
+                        }]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            title: { display: true, text: `Top ${limit} Assuntos (Concluídos)`, font: {size: 16, weight: 'bold'}, color: '#6b21a8' },
+                            legend: { display: false },
+                            datalabels: { anchor: 'end', align: 'right', color: '#334155', font: {weight: 'bold'} }
+                        },
+                        scales: { x: { grid: {display: false}, grace: '10%' }, y: { ticks: {autoSkip: false} } }
+                    }
+                });
+            }
+
+            if ((state.status === 'all' || state.status === 'andamento') && (state.quarter === '3' || state.quarter === 'all')) {
+                const limit = state.status === 'andamento' ? 15 : 10;
+                let dataset = state.status === 'andamento' ? topAndamento : topAndamento.slice(0,10);
+                
+                const targetCtx = state.status === 'andamento' ? ctx1 : ctx2;
+                const chartInstance = new Chart(targetCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: dataset.map(d => d.assunto.length > 30 ? d.assunto.substring(0, 30) + '...' : d.assunto),
+                        datasets: [{
+                            label: 'Em Andamento',
+                            data: dataset.map(d => d.calcAndamento),
+                            backgroundColor: colors.andamento,
+                            borderRadius: 4
+                        }]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            title: { display: true, text: `Top ${limit} Assuntos (Em Andamento)`, font: {size: 16, weight: 'bold'}, color: '#8b5cf6' },
+                            legend: { display: false },
+                            datalabels: { anchor: 'end', align: 'right', color: '#334155', font: {weight: 'bold'} }
+                        },
+                        scales: { x: { grid: {display: false}, grace: '10%' }, y: { ticks: {autoSkip: false} } }
+                    }
+                });
+                
+                if(state.status === 'andamento') {
+                    currentChart1 = chartInstance;
+                    showEmptyChartMessage(ctx2, "Visão exclusiva de processos em andamento.");
+                } else {
+                    currentChart2 = chartInstance;
+                }
+            } else if (state.quarter === '1' || state.quarter === '2') {
+                 if(state.status === 'all') {
+                     showEmptyChartMessage(ctx2, "Dados de andamento detalhados indisponíveis para trimestres passados.");
+                 }
+            }
+
+            // Global Historical Trend Line (Only show if all sectors and all subjects are selected)
+            if (state.sector === 'all' && state.subject === 'all' && state.status === 'all' && state.quarter === 'all') {
+                selectors.chart3Container.classList.remove('hidden');
+                
+                currentChart3 = new Chart(ctx3, {
+                    type: 'line',
+                    data: {
+                        labels: ['1º Trimestre', '2º Trimestre', '3º Trimestre'],
+                        datasets: [
+                            {
+                                label: 'Processos Concluídos (Vazão)',
+                                data: [totalConcluidosHistorical.q1, totalConcluidosHistorical.q2, totalConcluidosHistorical.q3],
+                                borderColor: colors.concluidoBorder,
+                                backgroundColor: colors.concluido,
+                                tension: 0.3,
+                                fill: true,
+                                borderDash: [],
+                            },
+                            {
+                                label: 'Estoque Total Estimado (Final do Tri)',
+                                data: [historicalPending.q1, historicalPending.q2, historicalPending.q3],
+                                borderColor: colors.andamentoBorder,
+                                backgroundColor: 'transparent',
+                                borderDash: [5, 5], // Dashed line to indicate it includes non-filtered data (SUOFIS)
+                                tension: 0.3,
+                                pointBackgroundColor: colors.andamentoBorder
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            title: { display: true, text: 'Evolução Global 2026: Vazão vs Estoque', font: {size: 16, weight: 'bold'}, color: '#6b21a8' },
+                            tooltip: { mode: 'index', intersect: false },
+                            datalabels: {
+                                align: 'top',
+                                color: '#334155',
+                                font: {weight: 'bold'},
+                                backgroundColor: 'rgba(255,255,255,0.7)',
+                                borderRadius: 4
+                            }
+                        },
+                        scales: { y: { beginAtZero: true } }
+                    }
+                });
+            }
+        }
+        
+        function showEmptyChartMessage(ctx, message) {
+             ctx.font = '14px Inter, sans-serif';
+             ctx.fillStyle = '#94a3b8';
+             ctx.textAlign = 'center';
+             ctx.fillText(message, ctx.canvas.width / 2, ctx.canvas.height / 2);
+        }
+
+        // Initialize App on Load
+        window.onload = init;
+    </script>
+</body>
+</html>
